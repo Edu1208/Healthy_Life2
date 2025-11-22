@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}Historial de Rutinas - Healthy Life{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="display-5 fw-bold text-success">Historial de Rutinas</h1>
+      <p class="lead text-muted">Revisa tu progreso y rutinas completadas</p>
+    </div>
+    <a href="{{ url_for('nuevo') }}" class="btn btn-success btn-lg">
+      <i class="bi bi-plus-circle me-2"></i>Nueva Rutina
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card card-modern mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-medium">Tipo de Rutina</label>
+          <select class="form-select" id="filterType">
+            <option value="">Todos los tipos</option>
+            <option value="fuerza">Fuerza</option>
+            <option value="cardio">Cardio</option>
+            <option value="velocidad">Velocidad</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-medium">Estado</label>
+          <select class="form-select" id="filterStatus">
+            <option value="">Todos los estados</option>
+            <option value="completada">Completada</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en-progreso">En Progreso</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-medium">Fecha Desde</label>
+          <input type="date" class="form-control" id="filterDateFrom">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-medium">Fecha Hasta</label>
+          <input type="date" class="form-control" id="filterDateTo">
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-12">
+          <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+            <i class="bi bi-funnel me-1"></i>Aplicar Filtros
+          </button>
+          <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Limpiar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estadísticas Rápidas -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card card-modern text-center">
+        <div class="card-body">
+          <h3 class="text-success" id="totalRutinas">8</h3>
+          <p class="text-muted mb-0">Total Rutinas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-modern text-center">
+        <div class="card-body">
+          <h3 class="text-primary" id="rutinasCompletadas">6</h3>
+          <p class="text-muted mb-0">Completadas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-modern text-center">
+        <div class="card-body">
+          <h3 class="text-warning" id="rutinasPendientes">1</h3>
+          <p class="text-muted mb-0">Pendientes</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-modern text-center">
+        <div class="card-body">
+          <h3 class="text-info" id="minutosTotales">315</h3>
+          <p class="text-muted mb-0">Minutos Totales</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de Rutinas -->
+  <div class="row g-4" id="listaRutinas">
+    <!-- Las rutinas se cargarán dinámicamente -->
+  </div>
+
+  <!-- Paginación -->
+  <nav aria-label="Page navigation" class="mt-5">
+    <ul class="pagination justify-content-center" id="paginacion">
+      <li class="page-item disabled">
+        <a class="page-link" href="#" tabindex="-1">Anterior</a>
+      </li>
+      <li class="page-item active"><a class="page-link" href="#">1</a></li>
+      <li class="page-item"><a class="page-link" href="#">2</a></li>
+      <li class="page-item"><a class="page-link" href="#">3</a></li>
+      <li class="page-item">
+        <a class="page-link" href="#">Siguiente</a>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<!-- Modal para Ver Rutina -->
+<div class="modal fade" id="modalVerRutina" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitulo">Detalles de Rutina</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalContenido">
+        <!-- Contenido dinámico -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-success" onclick="iniciarRutina()">Comenzar Rutina</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Acción</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalConfirmacionTexto">
+        ¿Estás seguro de que quieres eliminar esta rutina?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarAccion">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cargar rutinas desde el servidor
+document.addEventListener('DOMContentLoaded', function() {
+  cargarRutinasDesdeServidor();
+});
+
+function cargarRutinasDesdeServidor() {
+  fetch('/historial-rutinas-data')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        mostrarRutinas(data.rutinas);
+        actualizarEstadisticas(data.rutinas);
+      } else {
+        console.error('Error al cargar rutinas:', data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      mostrarMensaje('Error al cargar las rutinas', 'danger');
+    });
+}
+
+function mostrarRutinas(rutinas) {
+  const listaRutinas = document.getElementById('listaRutinas');
+  listaRutinas.innerHTML = '';
+
+  if (rutinas.length === 0) {
+    listaRutinas.innerHTML = `
+      <div class="col-12 text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <h4 class="text-muted mt-3">No hay rutinas registradas</h4>
+        <p class="text-muted">Crea tu primera rutina para verla aquí.</p>
+        <a href="{{ url_for('nuevo') }}" class="btn btn-success mt-3">
+          <i class="bi bi-plus-circle me-2"></i>Crear Primera Rutina
+        </a>
+      </div>
+    `;
+    return;
+  }
+
+  rutinas.forEach(rutina => {
+    const badgeColor = getBadgeColor(rutina.tipo);
+    const estadoColor = getEstadoColor(rutina.estado);
+    
+    const fechaTexto = rutina.estado === 'completada' && rutina.fecha_completada 
+      ? new Date(rutina.fecha_completada).toLocaleDateString('es-ES')
+      : (rutina.fecha_creacion 
+          ? new Date(rutina.fecha_creacion).toLocaleDateString('es-ES')
+          : 'Fecha no disponible');
+    
+    const rutinaHTML = `
+      <div class="col-12">
+        <div class="card card-modern">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <div class="d-flex align-items-start mb-2">
+                  <div class="${badgeColor} bg-opacity-10 p-2 rounded me-3">
+                    <i class="${getTipoIcono(rutina.tipo)} ${badgeColor} fs-4"></i>
+                  </div>
+                  <div>
+                    <h4 class="card-title mb-1">${rutina.nombre}</h4>
+                    <p class="text-muted mb-2">${rutina.descripcion || 'Sin descripción'}</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <span class="badge ${badgeColor}">${rutina.tipo ? rutina.tipo.charAt(0).toUpperCase() + rutina.tipo.slice(1) : 'Sin tipo'}</span>
+                      <span class="badge bg-warning">${rutina.nivel || 'Sin nivel'}</span>
+                      <span class="badge bg-info">${rutina.duracion || 0} min</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 text-md-end">
+                <div class="mb-2">
+                  <span class="badge ${estadoColor} fs-6">${getEstadoTexto(rutina.estado)}</span>
+                </div>
+                <div class="text-muted mb-2">
+                  <i class="bi bi-calendar me-1"></i>${fechaTexto}
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-outline-primary btn-sm" onclick="verRutina('${rutina._id}')">
+                    <i class="bi bi-eye me-1"></i>Ver
+                  </button>
+                  ${rutina.estado !== 'completada' ? `
+                    <button class="btn btn-outline-success btn-sm" onclick="completarRutina('${rutina._id}')">
+                      <i class="bi bi-check-lg me-1"></i>Completar
+                    </button>
+                  ` : ''}
+                  <button class="btn btn-outline-danger btn-sm" onclick="eliminarRutina('${rutina._id}')">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    listaRutinas.innerHTML += rutinaHTML;
+  });
+}
+
+function completarRutina(id) {
+  fetch(`/rutina/completar/${id}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      mostrarMensaje(data.message, 'success');
+      cargarRutinasDesdeServidor();
+    } else {
+      mostrarMensaje(data.message, 'danger');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    mostrarMensaje('Error al completar la rutina', 'danger');
+  });
+}
+
+function eliminarRutina(id) {
+  document.getElementById('modalConfirmacionTexto').textContent = 
+    '¿Estás seguro de que quieres eliminar esta rutina? Esta acción no se puede deshacer.';
+  
+  const btnConfirmar = document.getElementById('btnConfirmarAccion');
+  btnConfirmar.onclick = function() {
+    fetch(`/historial/eliminar/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        mostrarMensaje(data.message, 'success');
+        cargarRutinasDesdeServidor();
+      } else {
+        mostrarMensaje(data.message, 'danger');
+      }
+      
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfirmacion'));
+      modal.hide();
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      mostrarMensaje('Error al eliminar la rutina', 'danger');
+    });
+  };
+  
+  const modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
+  modal.show();
+}
+
+// Las demás funciones permanecen igual...
+function verRutina(id) {
+  fetch(`/rutina/${id}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        mostrarModalRutina(data.rutina);
+      } else {
+        mostrarMensaje(data.message, 'danger');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      mostrarMensaje('Error al cargar la rutina', 'danger');
+    });
+}
+
+function mostrarModalRutina(rutina) {
+  const modalTitulo = document.getElementById('modalTitulo');
+  const modalContenido = document.getElementById('modalContenido');
+  
+  modalTitulo.textContent = rutina.nombre;
+  
+  const ejerciciosHTML = rutina.ejercicios && rutina.ejercicios.length > 0 
+    ? rutina.ejercicios.map(ej => `<li class="list-group-item">${ej}</li>`).join('')
+    : '<li class="list-group-item text-muted">No hay ejercicios registrados</li>';
+  
+  modalContenido.innerHTML = `
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Información General</h6>
+        <ul class="list-unstyled">
+          <li><strong>Tipo:</strong> <span class="badge ${getBadgeColor(rutina.tipo)}">${rutina.tipo ? rutina.tipo.charAt(0).toUpperCase() + rutina.tipo.slice(1) : 'Sin tipo'}</span></li>
+          <li><strong>Nivel:</strong> <span class="badge bg-warning">${rutina.nivel || 'Sin nivel'}</span></li>
+          <li><strong>Duración:</strong> ${rutina.duracion || 0} minutos</li>
+          <li><strong>Estado:</strong> <span class="badge ${getEstadoColor(rutina.estado)}">${getEstadoTexto(rutina.estado)}</span></li>
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <h6>Descripción</h6>
+        <p>${rutina.descripcion || 'Sin descripción'}</p>
+      </div>
+    </div>
+    <div class="mt-3">
+      <h6>Ejercicios</h6>
+      <ul class="list-group">
+        ${ejerciciosHTML}
+      </ul>
+    </div>
+  `;
+  
+  const modal = new bootstrap.Modal(document.getElementById('modalVerRutina'));
+  modal.show();
+}
+
+// Funciones auxiliares (se mantienen igual)
+function getBadgeColor(tipo) {
+  const colores = {
+    'fuerza': 'bg-primary',
+    'cardio': 'bg-danger', 
+    'velocidad': 'bg-warning'
+  };
+  return colores[tipo] || 'bg-secondary';
+}
+
+function getEstadoColor(estado) {
+  const colores = {
+    'completada': 'bg-success',
+    'pendiente': 'bg-secondary',
+    'en-progreso': 'bg-info'
+  };
+  return colores[estado] || 'bg-secondary';
+}
+
+function getEstadoTexto(estado) {
+  const textos = {
+    'completada': 'Completada',
+    'pendiente': 'Pendiente',
+    'en-progreso': 'En Progreso'
+  };
+  return textos[estado] || estado;
+}
+
+function getTipoIcono(tipo) {
+  const iconos = {
+    'fuerza': 'bi bi-dumbbell',
+    'cardio': 'bi bi-heart-pulse',
+    'velocidad': 'bi bi-lightning-charge'
+  };
+  return iconos[tipo] || 'bi bi-activity';
+}
+
+function actualizarEstadisticas(rutinas) {
+  const total = rutinas.length;
+  const completadas = rutinas.filter(r => r.estado === 'completada').length;
+  const pendientes = rutinas.filter(r => r.estado === 'pendiente').length;
+  const minutos = rutinas.reduce((sum, r) => sum + (parseInt(r.duracion) || 0), 0);
+  
+  document.getElementById('totalRutinas').textContent = total;
+  document.getElementById('rutinasCompletadas').textContent = completadas;
+  document.getElementById('rutinasPendientes').textContent = pendientes;
+  document.getElementById('minutosTotales').textContent = minutos;
+}
+
+function mostrarMensaje(mensaje, tipo) {
+  const alerta = document.createElement('div');
+  alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+  alerta.style.cssText = 'top: 20px; right: 20px; z-index: 1060; min-width: 300px;';
+  alerta.innerHTML = `
+    ${mensaje}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  document.body.appendChild(alerta);
+  
+  setTimeout(() => {
+    if (alerta.parentNode) {
+      alerta.remove();
+    }
+  }, 3000);
+}
+</script>
+{% endblock %}
