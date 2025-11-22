@@ -238,6 +238,7 @@ def nueva_rutina():
 
     return render_template("nueva_rutina.html")
 
+# Ruta para guardar rutinas desde el formulario nuevo.html
 @app.route("/rutina/guardar", methods=["POST"])
 def guardar_rutina():
     if 'user_id' not in session:
@@ -341,9 +342,34 @@ def historial_rutinas():
     for item in historial:
         item['_id'] = str(item['_id'])
         item['usuario_id'] = str(item['usuario_id'])
-        item['rutina_id'] = str(item['rutina_id'])
+        if 'rutina_id' in item:
+            item['rutina_id'] = str(item['rutina_id'])
     
     return render_template("historial_rutinas.html", historial=historial)
+
+# Ruta para obtener datos del historial en formato JSON
+@app.route("/historial-rutinas-data")
+def historial_rutinas_data():
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "Usuario no autenticado"})
+    
+    try:
+        historial = list(db.historial_rutinas.find(
+            {"usuario_id": ObjectId(session["user_id"])}
+        ).sort("fecha_creacion", -1))
+        
+        # Convertir ObjectId a string
+        for item in historial:
+            item['_id'] = str(item['_id'])
+            item['usuario_id'] = str(item['usuario_id'])
+            if 'rutina_id' in item:
+                item['rutina_id'] = str(item['rutina_id'])
+        
+        return jsonify({"success": True, "rutinas": historial})
+    
+    except Exception as e:
+        print(f"Error al obtener historial: {e}")
+        return jsonify({"success": False, "message": "Error al obtener el historial"})
 
 # Ruta para eliminar rutinas del historial
 @app.route("/historial/eliminar/<id>", methods=["POST"])
@@ -352,29 +378,37 @@ def eliminar_historial(id):
         return jsonify({"success": False, "message": "Usuario no autenticado"})
     
     try:
-        # Eliminar de ambas colecciones
-        resultado_historial = db.historial_rutinas.delete_one({
+        # Primero obtener el rutina_id para eliminar de ambas colecciones
+        historial_item = db.historial_rutinas.find_one({
             "_id": ObjectId(id),
             "usuario_id": ObjectId(session["user_id"])
         })
         
-        # También eliminar de rutinas si existe
-        db.rutinas.delete_one({
-            "_id": ObjectId(id),
-            "usuario_id": ObjectId(session["user_id"])
-        })
-        
-        if resultado_historial.deleted_count > 0:
-            return jsonify({"success": True, "message": "Rutina eliminada correctamente"})
+        if historial_item:
+            rutina_id = historial_item.get('rutina_id')
+            
+            # Eliminar de historial_rutinas
+            resultado_historial = db.historial_rutinas.delete_one({
+                "_id": ObjectId(id),
+                "usuario_id": ObjectId(session["user_id"])
+            })
+            
+            # También eliminar de rutinas si existe
+            if rutina_id:
+                db.rutinas.delete_one({
+                    "_id": rutina_id,
+                    "usuario_id": ObjectId(session["user_id"])
+                })
+            
+            if resultado_historial.deleted_count > 0:
+                return jsonify({"success": True, "message": "Rutina eliminada correctamente"})
+            else:
+                return jsonify({"success": False, "message": "No se pudo eliminar la rutina"})
         else:
-            return jsonify({"success": False, "message": "No se pudo eliminar la rutina"})
+            return jsonify({"success": False, "message": "Rutina no encontrada"})
     
     except Exception as e:
         print(f"Error al eliminar rutina: {e}")
-        return jsonify({"success": False, "message": "Error al eliminar la rutina"})
-    
-    except Exception as e:
-        print(f"Error al eliminar del historial: {e}")
         return jsonify({"success": False, "message": "Error al eliminar la rutina"})
 
 # Ruta para obtener detalles de una rutina
@@ -400,25 +434,6 @@ def obtener_rutina(id):
     except Exception as e:
         print(f"Error al obtener rutina: {e}")
         return jsonify({"success": False, "message": "Error al obtener la rutina"})
-
-# Modificar la ruta de historial para pasar los datos correctamente
-@app.route("/historial-rutinas")
-def historial_rutinas():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    historial = list(db.historial_rutinas.find(
-        {"usuario_id": ObjectId(session["user_id"])}
-    ).sort("fecha_completada", -1))
-    
-    # Convertir ObjectId a string para las plantillas
-    for item in historial:
-        item['_id'] = str(item['_id'])
-        item['usuario_id'] = str(item['usuario_id'])
-        if 'rutina_id' in item:
-            item['rutina_id'] = str(item['rutina_id'])
-    
-    return render_template("historial_rutinas.html", historial=historial)
 
 # Gestión de notas
 @app.route("/nota/nueva", methods=["GET", "POST"])
